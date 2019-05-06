@@ -2,51 +2,51 @@ package my.cases;
 
 import beans.YandexMaps;
 import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
 import maps.core.YandexMapsApi;
-import org.apache.http.HttpStatus;
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.List;
 
 import static maps.utils.MapsConstants.*;
-import static org.hamcrest.Matchers.*;
+import static my.testData.TestMapsData.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.stringContainsInOrder;
+import static org.hamcrest.core.AllOf.allOf;
+import static org.junit.Assert.assertTrue;
 
 public class MyRestApiTest {
 
     @Test()
-    public void simpleSpellerApiCall() {
-/*        RestAssured
-                .given()
-                .queryParam("apikey", MY_YANDEX_MAPS_API_KEY)
-                .param("geocode", "Москва")
-                .param("format", "json")
-                .accept(ContentType.JSON)
-                .auth().basic("any", "any")
-                .header("custom header1", "header1.value")
-                .contentType(ContentType.JSON)
-                .and()
-                .body("some body lol")
-                .log().everything()
-                .get(YANDEX_MAPS_API_URI)
-                .prettyPeek();*/
-
-/*        YandexMapsApi.with()
-                .apiKey(MY_YANDEX_MAPS_API_KEY)
-                .format("json")
-                .geo("Москва")
-                .callApi();*/
+    public void tc1_findByCityName() {
 
         YandexMaps answer =
                 YandexMapsApi.getMapsAnswer(
                         YandexMapsApi.with()
-                                .apiKey(MY_YANDEX_MAPS_API_KEY)
+                                .apiKey(MY_YANDEX_MAPS_API_KEY_VALUE)
                                 .format("json")
-                                .geo("Москва")
+                                .geo(TC1_CITY_TO_FIND)
                                 .callApi()
                 );
-        System.out.println("==========================================================================================");
-        System.out.println(answer.getResponse().getGeoObjectCollection().getMetaDataProperty().getGeocoderResponseMetaData().getResults());
+        assertTrue(YandexMapsApi.getFormattedAnswer(answer, "address")
+                .contains(TC1_CORRECT_COUNTRY));
+        assertTrue(YandexMapsApi.getFormattedAnswer(answer, "generalInfo")
+                .contains(TC1_CORRECT_GENERAL_INFO));
+        assertTrue(YandexMapsApi.getFormattedAnswer(answer, "point")
+                .contains(TC1_CORRECT_GEO_POINT));
+    }
+
+    @Test
+    public void tc2_findPlaceByGeo() {
+        RestAssured
+                .given(YandexMapsApi.baseReqConf())
+                .param(YANDEX_MAPS_GEO_PARAM, TC2_GEO_TO_FIND)
+                .get().prettyPeek()
+                .then().specification(YandexMapsApi.successResponse())
+                .and()
+                .assertThat()
+                .body(allOf(
+                        stringContainsInOrder(Arrays.asList("province", "Москва")),
+                        containsString(TC2_CORRECT_GENERAL_INFO)
+                ));
     }
 }

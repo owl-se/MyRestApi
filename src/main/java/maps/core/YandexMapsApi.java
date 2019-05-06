@@ -6,13 +6,18 @@ import beans.YandexMaps;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
+import org.apache.http.HttpStatus;
 
 import java.util.HashMap;
-import java.util.List;
 
 import static maps.utils.MapsConstants.*;
+import static org.hamcrest.Matchers.lessThan;
 
 public class YandexMapsApi {
 
@@ -62,5 +67,55 @@ public class YandexMapsApi {
     public static YandexMaps getMapsAnswer(Response response) {
         return new Gson().fromJson(response.asString().trim(),
                 new TypeToken<YandexMaps>(){}.getType());
+    }
+
+    /**
+     * Gets formatted yandex maps api answer
+     * <p>
+     * NEEDS: YandexMaps obj and String command
+     * <p>
+     * @param maps obj to parse
+     * @param cmd string command(request, generalInfo, address, point)
+     */
+    public static String getFormattedAnswer(YandexMaps maps, String cmd) {
+        String formattedAnswer = null;
+        switch (cmd) {
+            case ("request"):
+                formattedAnswer = maps.getResponse().getGeoObjectCollection().getMetaDataProperty()
+                        .getGeocoderResponseMetaData().toString();
+                break;
+            case ("generalInfo"):
+                formattedAnswer = maps.getResponse().getGeoObjectCollection().getFeatureMember()
+                        .get(0).getGeoObject().getMetaDataProperty().getGeocoderMetaData().toString();
+
+                break;
+            case ("address"):
+                formattedAnswer = maps.getResponse().getGeoObjectCollection().getFeatureMember()
+                        .get(0).getGeoObject().getMetaDataProperty().getGeocoderMetaData().getAddress().toString();
+                break;
+            case ("point"):
+                formattedAnswer = maps.getResponse().getGeoObjectCollection().getFeatureMember().get(0).getGeoObject()
+                        .getPoint().getPos();
+                break;
+        }
+        return formattedAnswer;
+    }
+
+    public static ResponseSpecification successResponse() {
+        return new ResponseSpecBuilder()
+                .expectContentType(ContentType.JSON)
+                .expectStatusCode(HttpStatus.SC_OK)
+                .expectResponseTime(lessThan(20000L))
+                .expectHeader("Yandex-DataVendors", "yandex")
+                .build();
+    }
+
+    public static RequestSpecification baseReqConf() {
+        return new RequestSpecBuilder()
+                .setAccept(ContentType.XML)
+                .addQueryParam(YANDEX_MAPS_API_KEY_PARAM, MY_YANDEX_MAPS_API_KEY_VALUE)
+                .addQueryParam(YANDEX_MAPS_FORMAT_PARAM, "json")
+                .setBaseUri(YANDEX_MAPS_API_URI)
+                .build();
     }
 }
